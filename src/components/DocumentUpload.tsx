@@ -1,5 +1,4 @@
 import { useState, useCallback } from "react";
-import { useDropzone } from "react-dropzone";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -23,29 +22,43 @@ export const DocumentUpload = ({ onAnalysisComplete }: DocumentUploadProps) => {
   const [files, setFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [isDragActive, setIsDragActive] = useState(false);
   const { toast } = useToast();
 
   console.log('DocumentUpload component rendered with files:', files.length);
 
-  const onDrop = useCallback((acceptedFiles: File[]) => {
-    console.log('Files dropped:', acceptedFiles);
-    setFiles(prev => [...prev, ...acceptedFiles]);
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFiles = Array.from(event.target.files || []);
+    console.log('Files selected:', selectedFiles);
+    setFiles(prev => [...prev, ...selectedFiles]);
     toast({
       title: "Files added",
-      description: `${acceptedFiles.length} file(s) ready for analysis`,
+      description: `${selectedFiles.length} file(s) ready for analysis`,
     });
-  }, [toast]);
+  };
 
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop,
-    accept: {
-      'application/pdf': ['.pdf'],
-      'image/*': ['.png', '.jpg', '.jpeg'],
-      'application/msword': ['.doc'],
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx']
-    },
-    multiple: true
-  });
+  const handleDragOver = (event: React.DragEvent) => {
+    event.preventDefault();
+    setIsDragActive(true);
+  };
+
+  const handleDragLeave = (event: React.DragEvent) => {
+    event.preventDefault();
+    setIsDragActive(false);
+  };
+
+  const handleDrop = (event: React.DragEvent) => {
+    event.preventDefault();
+    setIsDragActive(false);
+    
+    const droppedFiles = Array.from(event.dataTransfer.files);
+    console.log('Files dropped:', droppedFiles);
+    setFiles(prev => [...prev, ...droppedFiles]);
+    toast({
+      title: "Files added",
+      description: `${droppedFiles.length} file(s) ready for analysis`,
+    });
+  };
 
   const removeFile = (index: number) => {
     setFiles(prev => prev.filter((_, i) => i !== index));
@@ -136,27 +149,38 @@ export const DocumentUpload = ({ onAnalysisComplete }: DocumentUploadProps) => {
         </CardHeader>
         <CardContent>
           <div
-            {...getRootProps()}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
             className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
               isDragActive 
                 ? 'border-primary-500 bg-primary-50' 
                 : 'border-gray-300 hover:border-primary-400'
             }`}
           >
-            <input {...getInputProps()} />
-            <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            {isDragActive ? (
-              <p className="text-primary-600">Drop the files here...</p>
-            ) : (
-              <div>
-                <p className="text-gray-600 mb-2">
-                  Drag & drop documents here, or click to select files
-                </p>
-                <p className="text-sm text-gray-500">
-                  Bank statements, payslips, tax documents, ID documents
-                </p>
-              </div>
-            )}
+            <input
+              type="file"
+              multiple
+              accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
+              onChange={handleFileSelect}
+              className="hidden"
+              id="file-upload"
+            />
+            <label htmlFor="file-upload" className="cursor-pointer">
+              <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+              {isDragActive ? (
+                <p className="text-primary-600">Drop the files here...</p>
+              ) : (
+                <div>
+                  <p className="text-gray-600 mb-2">
+                    Drag & drop documents here, or click to select files
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    Bank statements, payslips, tax documents, ID documents
+                  </p>
+                </div>
+              )}
+            </label>
           </div>
         </CardContent>
       </Card>
